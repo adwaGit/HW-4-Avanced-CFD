@@ -16,7 +16,7 @@ using std::cout;
 //double u_init = 0;      //m/s
 double Gamma = 1.4; 
 double R_univ = 287.085635359116; // R_air
-const int i_max = 32;  
+const int i_max = 10;  
 double i_max_duplicate = i_max;
 double d_x = 2/(double(i_max));  //2/i_max+1 
 double CFL= 0.1;                  // for Euler explicit eqn use cfl <= 1 
@@ -24,7 +24,7 @@ double x_min = -1;
 double x_max = 1;
 double range = x_max-x_min;   
 double nozzle_total_length = 2;  //meters
-const int n_max = 200000; 
+const int n_max = 60000; 
 double Width = 1;               
 double p_stag = 300000;
 double T_stag = 600;
@@ -55,6 +55,11 @@ double F1_plus_half[i_max+1] ={0};
 double F2_plus_half[i_max+1] = {0};
 
 double F3_plus_half[i_max+1] = {0};
+
+ double van_leer_flux_i_plus_half_eq_1[i_max+1] = {0} ; 
+ double van_leer_flux_i_plus_half_eq_2[i_max+1] = {0} ; 
+ double van_leer_flux_i_plus_half_eq_3[i_max+1] = {0} ; 
+
 
 double Source[i_max+2]= {0};
 
@@ -136,6 +141,14 @@ void calculate_boundary_conditions_from_print_variables(int n)
 
      M_n[i_max+1] = (2.0*M_n[i_max]) - M_n[i_max-1];
       
+      if (M_n[i_max+1] < M_n[i_max])
+      {
+
+         cout << " This is where the Mach at i_max+1 is less than M_n at i_max" << endl;
+
+         // M_n[i_max+1] = M_n[i_max];
+      }
+
       if (M_n[i_max+1] < (0.18999999999999995/10))
      {
 
@@ -160,6 +173,7 @@ double primitive_to_conserved_variable(int n)
 for(int i = 0; i <= i_max+1; i++)
 {
 conserved_variable_n[i][0] = primitive_variable_n[i][0];
+// limiters are necessary for convergence using linear Mach number guess values. 
 // if (conserved_variable_n[i][0] < (0.110323511064052582/1000))
 //   {
 
@@ -296,8 +310,8 @@ double set_initial_condition_primitive_variable(int n) // checked manually seems
    {
    for (int i = 1; i <= i_max; i++)
    {
-      //M_n[i] = (x_location(i)*0.9) + 1;
-      M_n[i] = (x_location(i)*1.4) + 1.6;
+      //M_n[i] = (x_location(i)*0.9) + 1; // linear initial guess
+      M_n[i] = (x_location(i)*1.4) + 1.6; // closer initial guess
       // M_n[i] = M_n[i-1] + 0.1;
       // M_n[0] = 0.1;
      double psi = 1 + (((Gamma-1.0)/2.0)*M_n[i]*M_n[i]);
@@ -433,10 +447,9 @@ if (M_minus_1 < (0.18999999999999995/100))
 // }
   
 
-psi_bc_plus_2 = 1.0+ ((Gamma-1.0)/2.0)*M_plus_2*M_plus_2; 
-
-     T_plus_2 = T_stag / psi_bc_plus_2; 
-     p_plus_2 = (p_stag) / pow(psi_bc_plus_2,(Gamma/(Gamma-1)));
+    psi_bc_plus_2 = 1.0+ ((Gamma-1.0)/2.0)*M_plus_2*M_plus_2; 
+    T_plus_2 = T_stag / psi_bc_plus_2; 
+    p_plus_2 = (p_stag) / pow(psi_bc_plus_2,(Gamma/(Gamma-1)));
      rho_plus_2 = p_plus_2/(R_univ*T_plus_2);
      a_plus_2 = sqrt(Gamma*R_univ*T_plus_2);
      u_plus_2 = M_plus_2 * a_plus_2;
@@ -548,7 +561,7 @@ return Epsilon_2_i_plus_half;
 double compute_Epsilon_4_i_plus_half(int k)
 {
 double Kappa_2 = 0.5; // range is from 0.25 to 0.5 
-double Kappa_4 = 1.0/32.0; // ramge is from 0.015625 to 0.03125
+double Kappa_4 = 0.03125; // ramge is from 0.015625 to 0.03125
 double zero = 0;
 double Epsilon_4_i_plus_half = 0;
 Epsilon_4_i_plus_half = max(zero,(Kappa_4 - compute_Epsilon_2_i_plus_half(k))); 
@@ -980,6 +993,335 @@ return artificial_dissipation_output;
 }
 
 
+vector<double>set_right_state(int i)
+{
+   // i is the cell value from main euler equation loop
+
+vector<double>rho_a_u_ht_M_p_vector_right(6);
+std::fill(rho_a_u_ht_M_p_vector_right.begin(), rho_a_u_ht_M_p_vector_right.end(), 0.0);
+
+
+rho_a_u_ht_M_p_vector_right[0] = rho_n[i+1] ; 
+rho_a_u_ht_M_p_vector_right[1]= {sqrt(Gamma*R_univ*T_n[i+1])};
+rho_a_u_ht_M_p_vector_right[2]= {u_n[i+1]} ; 
+rho_a_u_ht_M_p_vector_right[3] = {total_enthalpy_n[i+1]}; 
+rho_a_u_ht_M_p_vector_right[4] = {M_n[i+1]}; 
+rho_a_u_ht_M_p_vector_right[5] = {p_n[i+1]} ; 
+
+return rho_a_u_ht_M_p_vector_right; 
+}
+
+
+vector<double>set_left_state(int i)
+{
+   // i is the cell value from main euler equation loop
+
+vector<double>rho_a_u_ht_M_p_vector_left(6);
+std::fill(rho_a_u_ht_M_p_vector_left.begin(), rho_a_u_ht_M_p_vector_left.end(), 0.0);
+
+
+rho_a_u_ht_M_p_vector_left[0] = rho_n[i] ; 
+rho_a_u_ht_M_p_vector_left[1]= {sqrt(Gamma*R_univ*T_n[i])};
+rho_a_u_ht_M_p_vector_left[2]= {u_n[i]} ; 
+rho_a_u_ht_M_p_vector_left[3] = {total_enthalpy_n[i]}; 
+rho_a_u_ht_M_p_vector_left[4] = {M_n[i]}; 
+rho_a_u_ht_M_p_vector_left[5] = {p_n[i]} ; 
+
+return rho_a_u_ht_M_p_vector_left; 
+}
+
+
+
+void defect_test_beta_sensor(int sensor, int i, double beta)
+{
+if ( (sensor == 0 ) && abs(M_n[i]) > 1 && beta != 0 )
+{
+cout << " Beta sensor needs to be checked at Mach " << M_n[i] << endl; 
+}
+
+if ( (sensor == 0 ) && abs(M_n[i]) < 1 && beta != -1 )
+{
+cout << " Beta sensor needs to be checked at Mach " << M_n[i] << endl; 
+}
+
+if ( (sensor == 1 ) && abs(M_n[i+1]) > 1 && beta != 0 )
+{
+cout << " Beta sensor needs to be checked at Mach " << M_n[i] << endl; 
+}
+
+if ( (sensor == 1 ) && abs(M_n[i+1]) < 1 && beta != -1 )
+{
+cout << " Beta sensor needs to be checked at Mach " << M_n[i] << endl; 
+}
+
+
+}
+
+
+void defect_test_alpha_sensor(int sensor, int i, double alpha_sensor)
+   {
+    if ((sensor == 0) && (M_n[i] > 0) && (alpha_sensor != 1))
+    {
+    cout << " Alpha sensor needs to be checked at i = " << i << "Mach number is = " << M_n[i] << endl;     
+    }
+
+ if ((sensor == 0) && (M_n[i] < 0) && (alpha_sensor != 0))
+    {
+    cout << " Alpha sensor needs to be checked at i = " << i << "Mach number is = " << M_n[i] << endl;     
+    }
+
+    if ((sensor == 1) && (M_n[i+1] > 0) && (alpha_sensor != 0))
+    {
+    cout << " Alpha sensor needs to be checked at i = " << i << "Mach number is = " << M_n[i+1] << endl;     
+    }
+
+    if ((sensor == 1) && (M_n[i+1] < 0) && (alpha_sensor != 1))
+    {
+    cout << " Alpha sensor needs to be checked at i = " << i << "Mach number is = " << M_n[i+1] << endl;     
+    }
+   }
+
+
+void defect_test_c_sensor(int sensor, int i, double c_sensor)
+{
+if ((sensor == 0 ) && (M_n[i] <= -1) && (c_sensor != 0)) 
+{
+       cout << " c sensor needs to be checked at i = " << i << "Mach number is = " << M_n[i] << endl;   
+} 
+
+if ((sensor == 0 ) && ( -1 < M_n[i] < 1) && (c_sensor != M_n[i])) 
+{
+       cout << " c sensor needs to be checked at i = " << i << "Mach number is = " << M_n[i] << endl;   
+}
+
+if ((sensor == 0 ) && ( 1 <= M_n[i]) && (c_sensor != M_n[i])) 
+{
+       cout << " c sensor needs to be checked at i = " << i << "Mach number is = " << M_n[i] << endl;   
+}
+}
+
+
+
+void defect_test_i_0_van_leer_fluxes(int i)
+{
+if ((van_leer_flux_i_plus_half_eq_1[i] - 152.761017160429503  > pow(10,-8))\
+|| (van_leer_flux_i_plus_half_eq_2[i] - 226348.334279915259685 > pow(10,-8))\
+||(van_leer_flux_i_plus_half_eq_3[i] -  92096536.706174135208130> pow(10,-8)))
+
+{
+   cout<< " The van_leer fluxes for i = 0 at n = 0 are not correct"<< endl;  
+}
+
+// cout << " van_leer_flux_calculator_eq_1 at i = " << van_leer_flux_calculator(i-1,0) <<endl;
+// cout << " van_leer_flux_calculator_eq_2 at i  = " << van_leer_flux_calculator(i-1,1) << endl;;
+// cout << " van_leer_flux_calculator_eq_3 at i  = " << van_leer_flux_calculator(i-1,2) << endl;
+
+}
+
+void defect_test_i_1_van_leer_fluxes(int i)
+{
+if ((van_leer_flux_i_plus_half_eq_1[i] - 333.763863259617949 > pow(10,-8))\
+|| (van_leer_flux_i_plus_half_eq_2[i]- 280180.688613670296036 > pow(10,-8))\
+||(van_leer_flux_i_plus_half_eq_3[i]- 201219502.561981171369553 > pow(10,-8)))
+
+{
+   cout<< " The van_leer fluxes for i = 1 at n = 0 are not correct"<< endl;  
+}
+
+// cout << " van_leer_flux_calculator_eq_1 at i = " << van_leer_flux_calculator(i,0) <<endl;
+// cout << " van_leer_flux_calculator_eq_2 at i  = " << van_leer_flux_calculator(i,1) << endl;;
+// cout << " van_leer_flux_calculator_eq_3 at i  = " << van_leer_flux_calculator(i,2) << endl;
+
+}
+
+
+void defect_test_i_max_minus_1_van_leer_fluxes(int i)
+{
+if ((van_leer_flux_i_plus_half_eq_1[i] - 174.156748693193975 > pow(10,-8))\
+|| ((van_leer_flux_i_plus_half_eq_2[i]) - 160020.878777213132707 > pow(10,-8))\
+||(van_leer_flux_i_plus_half_eq_3[i] - 104995591.786393344402313 > pow(10,-8)))
+
+{
+   cout<< " The van_leer fluxes for i = 9 at n = 0 are not correct"<< endl;  
+}
+
+// cout << " van_leer_flux_calculator_eq_1 at i = " << van_leer_flux_calculator(i-1,0) <<endl;
+// cout << " van_leer_flux_calculator_eq_2 at i  = " << van_leer_flux_calculator(i-1,1) << endl;;
+// cout << " van_leer_flux_calculator_eq_3 at i  = " << van_leer_flux_calculator(i-1,2) << endl;
+
+}
+
+vector<double> van_leer_flux_calculator(vector<double>rho_a_u_ht_M_p_vector_left,vector<double>rho_a_u_ht_M_p_vector_right)
+{
+// i is the cell value. 
+//eq_no is the number of the euler eq 0 for conv of mass and so on 
+vector<double>Total_flux_i_plus_half(3);
+std::fill(Total_flux_i_plus_half.begin(), Total_flux_i_plus_half.end(), 0.0);
+
+double rho_left = 0; 
+double a_left = 0; 
+double u_left = 0; 
+double total_enthalpy_left = 0; 
+double M_left = 0; 
+int int_M_left = 0 ; 
+double p_left = 0; 
+
+double rho_right = 0; 
+double a_right = 0; 
+double u_right = 0;  
+double total_enthalpy_right = 0;  
+double M_right = 0; 
+int int_M_right = 0 ; 
+double p_right = 0; 
+
+// initializing sensor varibales : 
+double c_plus = 0;
+double alpha_plus = 0;
+double beta_left = 0; 
+double M_plus = 0; 
+
+double D_plus = 0;  
+double p_overbar_plus = 0 ;
+
+
+double c_minus = 0;
+double alpha_minus = 0;
+double beta_right = 0; 
+double M_minus = 0; 
+
+double D_minus = 0;  
+double p_overbar_minus = 0 ;
+
+
+
+// setting states : 
+rho_left = rho_a_u_ht_M_p_vector_left[0] ; 
+a_left = rho_a_u_ht_M_p_vector_left[1];
+u_left = rho_a_u_ht_M_p_vector_left[2] ; 
+total_enthalpy_left = rho_a_u_ht_M_p_vector_left[3]; 
+M_left = rho_a_u_ht_M_p_vector_left[4]; 
+p_left = rho_a_u_ht_M_p_vector_left[5]; 
+
+rho_right= rho_a_u_ht_M_p_vector_right[0] ; 
+a_right= rho_a_u_ht_M_p_vector_right[1];
+u_right = rho_a_u_ht_M_p_vector_right[2] ; 
+total_enthalpy_right = rho_a_u_ht_M_p_vector_right[3]; 
+M_right = rho_a_u_ht_M_p_vector_right[4]; 
+p_right = rho_a_u_ht_M_p_vector_right[5]; 
+
+double pressure_flux_left_i_plus_half[3] = {0.0};
+double pressure_flux_right_i_plus_half[3] = {0.0};
+double Total_pressure_flux_i_plus_half[3] = {0.0}; 
+
+double convective_flux_left_i_plus_half[3] = {0.0}; 
+double convective_flux_right_i_plus_half[3] = {0.0}; 
+double Total_convective_flux_i_plus_half[3] = {0.0}; 
+
+
+// convective vectors : 
+double convective_flux_vector_left[3] = {0.0};
+convective_flux_vector_left[0] = 1;
+convective_flux_vector_left[1] = u_left;
+convective_flux_vector_left[2] = total_enthalpy_left ;
+
+double convective_flux_vector_right[3] = {0.0};
+convective_flux_vector_right[0] = 1;
+convective_flux_vector_right[1] = u_right ;
+convective_flux_vector_right[2] = total_enthalpy_right ;
+ 
+// pressure vectors :  
+double pressure_flux_vector_left[3]= {0.0};
+pressure_flux_vector_left[0] = 0 ;
+pressure_flux_vector_left[1] = p_left ;
+pressure_flux_vector_left[2] = 0  ;
+
+double pressure_flux_vector_right[3]= {0.0};
+pressure_flux_vector_right[0] = 0 ;
+pressure_flux_vector_right[1] = p_right ;
+pressure_flux_vector_right[2] = 0  ;
+
+// calculating M_plus and M_minus : 
+
+M_plus = (1.0/4.0)*pow((M_left + 1),2); 
+M_minus= -1*(1.0/4.0)*pow((M_right - 1),2); 
+
+//calculating beta : 
+int_M_left = static_cast<int>(M_left);
+
+beta_left = -1 * max(0.0, 1.0 - int_M_left ) ; 
+if (max(0.0, 1.0 - int_M_left ) ==  0)
+{ 
+   beta_left = 0.0; 
+}
+
+
+int_M_right = static_cast<int>(M_right);
+beta_right = -1* max(0.0, 1.0 - int_M_right) ; 
+if (max(0.0, 1.0 - int_M_right ) ==  0)
+{ 
+   beta_right = 0.0; 
+}
+
+// calculating alpha : 
+alpha_plus = (1.0/2.0) * ( 1 + copysign(1,M_left)) ; 
+
+alpha_minus = (1.0/2.0) * ( 1 - copysign(1,M_right)) ; 
+
+
+// caculating c sensor : 
+c_plus = (alpha_plus*(1.0+beta_left) * M_left) - (( beta_left)*M_plus); 
+c_minus = alpha_minus*(1.0 + beta_right) * M_right - ( beta_right)*M_minus; 
+
+
+// calculatin p_overbar_sensor : 
+p_overbar_plus = M_plus*((-1*M_left) + 2); 
+p_overbar_minus = M_minus*((-1*M_right) - 2); 
+
+// calculating D_sensor : 
+D_plus = alpha_plus*(1+beta_left) - (beta_left*p_overbar_plus) ; 
+D_minus = alpha_minus*(1+beta_right) - (beta_right*p_overbar_minus) ; 
+
+
+// calculating left and right convective flux for all 3 equations : 
+convective_flux_left_i_plus_half[0] = {rho_left*a_left*c_plus*convective_flux_vector_left[0]} ; 
+convective_flux_left_i_plus_half[1] = {rho_left*a_left*c_plus*convective_flux_vector_left[1]} ; 
+convective_flux_left_i_plus_half[2] = {rho_left*a_left*c_plus*convective_flux_vector_left[2]} ; 
+
+convective_flux_right_i_plus_half[0] = {rho_right*a_right*c_minus*convective_flux_vector_right[0]} ; 
+convective_flux_right_i_plus_half[1] = {rho_right*a_right*c_minus*convective_flux_vector_right[1]} ; 
+convective_flux_right_i_plus_half[2] = {rho_right*a_right*c_minus*convective_flux_vector_right[2]} ; 
+
+
+
+// totaling convective flux : 
+
+Total_convective_flux_i_plus_half[0] = convective_flux_left_i_plus_half[0] + convective_flux_right_i_plus_half[0] ;  
+Total_convective_flux_i_plus_half[1] = convective_flux_left_i_plus_half[1] + convective_flux_right_i_plus_half[1] ;  
+Total_convective_flux_i_plus_half[2] = convective_flux_left_i_plus_half[2] + convective_flux_right_i_plus_half[2] ;  
+
+
+// calculating left and right pressure flux for all 3 equations  : 
+pressure_flux_left_i_plus_half [0] = D_plus*pressure_flux_vector_left[0] ; 
+pressure_flux_left_i_plus_half [1] = D_plus*pressure_flux_vector_left[1] ; 
+pressure_flux_left_i_plus_half [2] = D_plus*pressure_flux_vector_left[2] ; 
+
+pressure_flux_right_i_plus_half [0] = D_minus*pressure_flux_vector_right[0] ; 
+pressure_flux_right_i_plus_half [1] = D_minus*pressure_flux_vector_right[1] ; 
+pressure_flux_right_i_plus_half [2] = D_minus*pressure_flux_vector_right[2] ; 
+
+// totaling pressure flux : 
+Total_pressure_flux_i_plus_half[0] =  pressure_flux_left_i_plus_half[0] + pressure_flux_right_i_plus_half[0];
+Total_pressure_flux_i_plus_half[1] =  pressure_flux_left_i_plus_half[1] + pressure_flux_right_i_plus_half[1];
+Total_pressure_flux_i_plus_half[2] =  pressure_flux_left_i_plus_half[2] + pressure_flux_right_i_plus_half[2];
+
+Total_flux_i_plus_half[0] = {Total_convective_flux_i_plus_half[0] + Total_pressure_flux_i_plus_half[0]};
+Total_flux_i_plus_half[1] = {Total_convective_flux_i_plus_half[1] + Total_pressure_flux_i_plus_half[1]};
+Total_flux_i_plus_half[2] = {Total_convective_flux_i_plus_half[2] + Total_pressure_flux_i_plus_half[2]};
+
+return Total_flux_i_plus_half;
+}
+
+
  void update_values(int n)
  {
 
@@ -1031,6 +1373,47 @@ print_flow_variables(outfile,n);
    F3_plus_half[i]  = ((((Gamma/(Gamma-1))*primitive_variable_n[i][2]*primitive_variable_n[i][1]) + (primitive_variable_n[i][0]*pow(primitive_variable_n[i][1],3)/2)) + (((Gamma/(Gamma-1))*primitive_variable_n[i+1][2]*primitive_variable_n[i+1][1]) + (primitive_variable_n[i+1][0]*pow(primitive_variable_n[i+1][1],3)/2)))/2 ;
    }
 
+for (int i = 0; i <= i_max; i++)    // if i = 0 flux is calculated between the face of 0 and 1.
+{
+
+vector<double>rho_a_u_ht_M_p_vector_left(6);
+std::fill(rho_a_u_ht_M_p_vector_left.begin(), rho_a_u_ht_M_p_vector_left.end(), 0.0);
+  
+vector<double>rho_a_u_ht_M_p_vector_right(6);
+std::fill(rho_a_u_ht_M_p_vector_right.begin(), rho_a_u_ht_M_p_vector_right.end(), 0.0);
+
+vector<double>van_leer_output(3);
+std::fill(van_leer_output.begin(), van_leer_output.end(), 0.0);
+
+rho_a_u_ht_M_p_vector_left =  set_left_state(i); 
+rho_a_u_ht_M_p_vector_right = set_right_state(i);
+
+van_leer_output= van_leer_flux_calculator(rho_a_u_ht_M_p_vector_left,rho_a_u_ht_M_p_vector_right);
+
+ van_leer_flux_i_plus_half_eq_1[i] = van_leer_output[0] ; 
+ van_leer_flux_i_plus_half_eq_2[i] = van_leer_output[1] ; 
+ van_leer_flux_i_plus_half_eq_3[i] = van_leer_output[2] ; 
+
+ if ((i == 0) && (n == 0))
+ {
+defect_test_i_0_van_leer_fluxes(i); 
+
+ }
+
+ if ((i == 1) && (n == 0))
+ {
+defect_test_i_1_van_leer_fluxes(i); 
+
+ }
+
+ if ((i == i_max -1) && (n == 0))
+ {
+defect_test_i_max_minus_1_van_leer_fluxes(i); 
+
+ }
+
+}
+
 primitive_to_conserved_variable(n);
 for (int i = 1; i <= i_max; i++) 
 {
@@ -1061,32 +1444,49 @@ if (n == 0)
 }
 
 
-// calculating residual : 
+// calculating residual HW 2  : 
 
 residual_eq1[i] = ((F1_plus_half[i]+artificial_dissipation_output[0])*find_area(i+0.5)) - ((F1_plus_half[i-1]+artificial_dissipation_output[3])*find_area(i-0.5)) ; 
 residual_eq2[i] = ((F2_plus_half[i]+artificial_dissipation_output[1])*find_area(i+0.5)) - ((F2_plus_half[i-1]+artificial_dissipation_output[4])*find_area(i-0.5)) -(Source[i]*d_x); 
 residual_eq3[i] = ((F3_plus_half[i]+artificial_dissipation_output[2])*find_area(i+0.5)) - ((F3_plus_half[i-1]+artificial_dissipation_output[5])*find_area(i-0.5)) ; 
 
-// defect_test_first_iteration(i,n);
-// defect_test_first_iteration(int i,int n)
 
-// {
-//    if (n==0)
-//    {
-//    if((residual_eq1[i] -  >= pow(10,-10))\
-//    (residual_eq2[i] -  >= pow(10,-10))\
-//    (residual_eq3[i] -  >= pow(10,-10)))
-// {
-//    cout<< " The residuals for first iteration are wrong "<< endl; 
-// }
 
-//    } 
-// }
+// HW 4 :  
+
+// residual_eq1[i] = ((van_leer_flux_i_plus_half_eq_1[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_1[i-1])*find_area(i-0.5)) ; 
+// residual_eq2[i] = ((van_leer_flux_i_plus_half_eq_2[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_2[i-1])*find_area(i-0.5)) -(Source[i]*d_x); 
+// residual_eq3[i] = ((van_leer_flux_i_plus_half_eq_3[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_3[i-1])*find_area(i-0.5)) ; 
+
+if (( i == 1 ) && (n == 0))
+{
+defect_test_i_1_van_leer_fluxes(i); 
+}
+
+if (( i == 1 ) && (n == 0))
+{
+defect_test_i_0_van_leer_fluxes(i); 
+}
+
+
+if (( i == i_max ) && (n == 0))
+{
+defect_test_i_max_minus_1_van_leer_fluxes(i); 
+}
+if ( i == 4)
+{
+   // cout << "Check here" << endl; 
+}
 
 
 // cout << " residual eq1 =" << residual_eq1[i] <<endl;
 // cout << " residual eq2 =" << residual_eq2[i] << endl;
 // cout << " residual eq3 =" << residual_eq3[i] << endl;
+
+if (isnan(residual_eq1[i]) || isnan(residual_eq2[i]) || isnan(residual_eq3[i]))
+{
+   cout << " One of the residuals is nan" << endl ; 
+}
 // eq 1 : solves U1 : 
 conserved_variable_n_plus_1[i][0]  =  conserved_variable_n[i][0] - (residual_eq1[i] * stability(d_x,i)/Vol[i]) ; 
 //cout<< stability(d_x,i)<< endl; 
@@ -1097,37 +1497,8 @@ conserved_variable_n_plus_1[i][2]  =  conserved_variable_n[i][2] - (residual_eq3
 // apply limited when converting to the primitive variable! 
 
 
-// //eq 1 : solves rho_n_plus_1
-
-// rho_n_plus_1[i] = rho_n[i] + (stability(d_x,i)/Vol[i])*( -((F1_plus_half[i]+artificial_dissipation_output[0])*find_area(i+0.5)) + ((F1_plus_half[i-1]+artificial_dissipation_output[3])*find_area(i-0.5)));  
-
-// // eq 2 : solves u_n_plus_1
-
-// u_n_plus_1[i] = ((rho_n[i]*u_n[i])+ ((stability(d_x,i)/Vol[i]) * ((Source[i]*d_x) - ((F2_plus_half[i]+artificial_dissipation_output[1])*find_area(i+0.5)) + ((F2_plus_half[i-1]+artificial_dissipation_output[4])*find_area(i-0.5)))))/rho_n_plus_1[i];
-
-// // eq 3 : solves p_n_plus_1
-
-// total_energy_n_plus_1[i] = ((rho_n[i]*total_energy_n[i]) + ((stability(d_x,i)/Vol[i])* ( - ((F3_plus_half[i]+artificial_dissipation_output[2])*find_area(i+0.5)) + ((F3_plus_half[i-1]+artificial_dissipation_output[5])*find_area(i-0.5)))))/rho_n_plus_1[i]; 
 
 
-    
-
-//calculating othher physical properties using the updated values from the main 3 equtions : 
-
-// (u_n_plus_1^2 - Gamma*u_n_plus_1^2 + 2*Gamma*R_univ*T_stag)/(2*Gamma*R_univ)
-
-// T_n_plus_1[i] = (pow(u_n_plus_1[i],2) - (Gamma*pow(u_n_plus_1[i],2))  + (2* Gamma*R_univ*T_stag)) /(2*Gamma*R_univ);
-// M_n_plus_1[i] = u_n_plus_1[i]/sqrt(Gamma*R_univ*T_n_plus_1[i]);
-// psi_n_plus_1[i] = 1 + (((Gamma-1)/2)*M_n_plus_1[i]);
-// p_n_plus_1[i] = p_stag/(pow(psi_n_plus_1[i],(Gamma/(Gamma-1)))); 
-
-
-   //cout << " Values at i = " << i <<endl;
-   //   cout << " Values for M_n_plus_1 = " << M_n_plus_1[i]<<endl;
-   //  cout << " Values for u_n_plus_1 = " << u_n_plus_1[i]<<endl;
-   //   cout << " Values for p_n_plus_1= " << p_n_plus_1[i]<<endl;
-   //   cout << " Values for rho_n_plus_1 = "<< rho_n_plus_1[i]<<endl;
-    //cout << " Values of total_energy_n_plus_1 = " << total_energy_n_plus_1[i]<<endl;
 
 }
  if (n % 1 == 0)
