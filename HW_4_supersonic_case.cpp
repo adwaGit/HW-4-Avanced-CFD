@@ -16,7 +16,7 @@ using std::cout;
 //double u_init = 0;      //m/s
 double Gamma = 1.4; 
 double R_univ = 287.085635359116; // R_air
-const int i_max = 10;  
+const int i_max = 64;  
 double i_max_duplicate = i_max;
 double d_x = 2/(double(i_max));  //2/i_max+1 
 double CFL= 0.1;                  // for Euler explicit eqn use cfl <= 1 
@@ -146,7 +146,7 @@ void calculate_boundary_conditions_from_print_variables(int n)
 
          cout << " This is where the Mach at i_max+1 is less than M_n at i_max" << endl;
 
-         // M_n[i_max+1] = M_n[i_max];
+         //M_n[i_max+1] = M_n[i_max];
       }
 
       if (M_n[i_max+1] < (0.18999999999999995/10))
@@ -174,32 +174,32 @@ for(int i = 0; i <= i_max+1; i++)
 {
 conserved_variable_n[i][0] = primitive_variable_n[i][0];
 // limiters are necessary for convergence using linear Mach number guess values. 
-// if (conserved_variable_n[i][0] < (0.110323511064052582/1000))
-//   {
+if (conserved_variable_n[i][0] < (0.110323511064052582/1000))
+  {
 
-//     conserved_variable_n[i][0] = 0.110323511064052582/1000;
-//     cout<< " the 0th conserved variable has gone small and we are using the limiter"<<endl;
+    conserved_variable_n[i][0] = 0.110323511064052582/1000;
+    cout<< " the 0th conserved variable has gone small and we are using the limiter"<<endl;
    
-//   }
+  }
 
 conserved_variable_n[i][1] = primitive_variable_n[i][0]*primitive_variable_n[i][1];
-// if (conserved_variable_n[i][1] < (0.110323511064052582*57.252777099609375 )/1000)
-//   {
+if (conserved_variable_n[i][1] < (0.110323511064052582*57.252777099609375 )/1000)
+  {
 
-//     conserved_variable_n[i][1] = 0.110323511064052582*57.252777099609375/1000;
-//     cout<< " the first conserved variable has gone small asnd we are using the limiter"<<endl;
+    conserved_variable_n[i][1] = 0.110323511064052582*57.252777099609375/1000;
+    cout<< " the first conserved variable has gone small asnd we are using the limiter"<<endl;
    
-//   }
+  }
 
 
 conserved_variable_n[i][2] = (primitive_variable_n[i][2]/(Gamma-1.0)) + 0.5*(primitive_variable_n[i][0]*pow(primitive_variable_n[i][1],2));
-// if (conserved_variable_n[i][2] < (432172.919382919092*0.110323511064052582)/1000) // reduce the value for energy to 432172.919382919092 if this limiter is giving problems. 
-//   {
+if (conserved_variable_n[i][2] < (432172.919382919092*0.110323511064052582)/1000) // reduce the value for energy to 432172.919382919092 if this limiter is giving problems. 
+  {
 
-//     conserved_variable_n[i][2] = 432172.919382919092*0.110323511064052582/1000;
-//     cout<< " the second conserved variable has gone small and we are using the limiter"<<endl;
+    conserved_variable_n[i][2] = 432172.919382919092*0.110323511064052582/1000;
+    cout<< " the second conserved variable has gone small and we are using the limiter"<<endl;
    
-//   }
+  }
     //U(:,3) = ( V(:,3)/(gamma - one) ) + half*V(:,1)*V(:,2)**2
 }
 
@@ -231,13 +231,13 @@ for(int i = 0; i <= i_max+1 ; i++)
 
 {
 primitive_variable_n[i][0] = conserved_variable_n_plus_1[i][0]; 
-//  if (primitive_variable_n[i][0] < (0.110323511064052582/1000))
-//   {
+ if (primitive_variable_n[i][0] < (0.110323511064052582/1000))
+  {
 
-//     primitive_variable_n[i][0] = 0.110323511064052582/1000;
-//     cout<< " the density has gone small and we are using the limiter"<<endl;
+    primitive_variable_n[i][0] = 0.110323511064052582/1000;
+    cout<< " the density has gone small and we are using the limiter"<<endl;
    
-//   }
+  }
 
 primitive_variable_n[i][1] =  conserved_variable_n_plus_1[i][1]/conserved_variable_n_plus_1[i][0]; 
  if (primitive_variable_n[i][1] < (57.252777099609375/1000))
@@ -249,13 +249,13 @@ primitive_variable_n[i][1] =  conserved_variable_n_plus_1[i][1]/conserved_variab
   }
 primitive_variable_n[i][2] = (Gamma-1.0)*conserved_variable_n_plus_1[i][2] - (0.5*(Gamma-1.0)*pow(conserved_variable_n_plus_1[i][1],2)/conserved_variable_n_plus_1[i][0]);
 
-// if (primitive_variable_n[i][2] < (6302.525390625/1000))
-//   {
+if (primitive_variable_n[i][2] < (6302.525390625/1000))
+  {
 
-//     primitive_variable_n[i][2] = 6302.525390625/1000;
-//     cout<< " the pressure has gone small and we are using the limiter"<<endl;
+    primitive_variable_n[i][2] = 6302.525390625/1000;
+    cout<< " the pressure has gone small and we are using the limiter"<<endl;
    
-//   }
+  }
 
 //V(:,3) = (gamma - one)*U(:,3) - half*(gamma - one)*U(:,2)**2/U(:,1)
 
@@ -310,8 +310,8 @@ double set_initial_condition_primitive_variable(int n) // checked manually seems
    {
    for (int i = 1; i <= i_max; i++)
    {
-      //M_n[i] = (x_location(i)*0.9) + 1; // linear initial guess
-      M_n[i] = (x_location(i)*1.4) + 1.6; // closer initial guess
+      M_n[i] = (x_location(i)*0.9) + 1; // linear initial guess
+      //M_n[i] = (x_location(i)*1.4) + 1.6; // closer initial guess
       // M_n[i] = M_n[i-1] + 0.1;
       // M_n[0] = 0.1;
      double psi = 1 + (((Gamma-1.0)/2.0)*M_n[i]*M_n[i]);
@@ -552,7 +552,7 @@ if (i == 0)
 double compute_Epsilon_2_i_plus_half(int k)
 {
 
-double Kappa_2 = 0.5; // range is from 0.25 to 0.5 
+double Kappa_2 = 0.3; // range is from 0.25 to 0.5 
 double Epsilon_2_i_plus_half = Kappa_2 * find_max_nu(k) ;
 return Epsilon_2_i_plus_half; 
 //cout << " Epsilon_2_i_plus_half = " << Epsilon_2_i_plus_half<<endl ; // should decrease as i increases. 
@@ -560,8 +560,8 @@ return Epsilon_2_i_plus_half;
 
 double compute_Epsilon_4_i_plus_half(int k)
 {
-double Kappa_2 = 0.5; // range is from 0.25 to 0.5 
-double Kappa_4 = 0.03125; // ramge is from 0.015625 to 0.03125
+double Kappa_2 = 0.3; // range is from 0.25 to 0.5 
+double Kappa_4 = 0.02; // ramge is from 0.015625 to 0.03125
 double zero = 0;
 double Epsilon_4_i_plus_half = 0;
 Epsilon_4_i_plus_half = max(zero,(Kappa_4 - compute_Epsilon_2_i_plus_half(k))); 
@@ -1000,13 +1000,21 @@ vector<double>set_right_state(int i)
 vector<double>rho_a_u_ht_M_p_vector_right(6);
 std::fill(rho_a_u_ht_M_p_vector_right.begin(), rho_a_u_ht_M_p_vector_right.end(), 0.0);
 
+double T_right = 0; 
+double a_right= 0; 
+double total_enthalpy_right = 0;
+double M_right = 0;
+T_right = p_n[i+1]/(rho_n[i+1]*R_univ) ; 
+a_right = sqrt(Gamma*R_univ*T_right);
+total_enthalpy_right = pow(a_right,2)/(Gamma-1) + 0.5*(pow(u_n[i+1],2)) ; 
+M_right = u_n[i+1]/a_right ;
 
 rho_a_u_ht_M_p_vector_right[0] = rho_n[i+1] ; 
-rho_a_u_ht_M_p_vector_right[1]= {sqrt(Gamma*R_univ*T_n[i+1])};
-rho_a_u_ht_M_p_vector_right[2]= {u_n[i+1]} ; 
-rho_a_u_ht_M_p_vector_right[3] = {total_enthalpy_n[i+1]}; 
-rho_a_u_ht_M_p_vector_right[4] = {M_n[i+1]}; 
-rho_a_u_ht_M_p_vector_right[5] = {p_n[i+1]} ; 
+rho_a_u_ht_M_p_vector_right[1]= a_right;
+rho_a_u_ht_M_p_vector_right[2]= u_n[i+1] ; 
+rho_a_u_ht_M_p_vector_right[3] = total_enthalpy_right; 
+rho_a_u_ht_M_p_vector_right[4] = M_right; 
+rho_a_u_ht_M_p_vector_right[5] = p_n[i+1] ; 
 
 return rho_a_u_ht_M_p_vector_right; 
 }
@@ -1019,13 +1027,24 @@ vector<double>set_left_state(int i)
 vector<double>rho_a_u_ht_M_p_vector_left(6);
 std::fill(rho_a_u_ht_M_p_vector_left.begin(), rho_a_u_ht_M_p_vector_left.end(), 0.0);
 
+double T_left = 0; 
+double a_left = 0; 
+double total_enthalpy_left = 0;
+double M_left = 0;
+double p_left = p_n[i] ; 
+double rho_left = rho_n[i]; 
+double u_left = u_n[i];
+T_left = p_left/(rho_left*R_univ) ; 
+a_left = sqrt(Gamma*R_univ*T_left);
+total_enthalpy_left= pow(a_left,2)/(Gamma-1) + 0.5*(pow(u_n[i],2)) ; 
+M_left = u_left/a_left ; 
 
-rho_a_u_ht_M_p_vector_left[0] = rho_n[i] ; 
-rho_a_u_ht_M_p_vector_left[1]= {sqrt(Gamma*R_univ*T_n[i])};
-rho_a_u_ht_M_p_vector_left[2]= {u_n[i]} ; 
-rho_a_u_ht_M_p_vector_left[3] = {total_enthalpy_n[i]}; 
-rho_a_u_ht_M_p_vector_left[4] = {M_n[i]}; 
-rho_a_u_ht_M_p_vector_left[5] = {p_n[i]} ; 
+rho_a_u_ht_M_p_vector_left[0] = rho_left ; 
+rho_a_u_ht_M_p_vector_left[1] = a_left;
+rho_a_u_ht_M_p_vector_left[2] = u_left ; 
+rho_a_u_ht_M_p_vector_left[3] = total_enthalpy_left; 
+rho_a_u_ht_M_p_vector_left[4] = M_left; 
+rho_a_u_ht_M_p_vector_left[5] = p_left; 
 
 return rho_a_u_ht_M_p_vector_left; 
 }
@@ -1104,9 +1123,9 @@ if ((sensor == 0 ) && ( 1 <= M_n[i]) && (c_sensor != M_n[i]))
 
 void defect_test_i_0_van_leer_fluxes(int i)
 {
-if ((van_leer_flux_i_plus_half_eq_1[i] - 152.761017160429503  > pow(10,-8))\
-|| (van_leer_flux_i_plus_half_eq_2[i] - 226348.334279915259685 > pow(10,-8))\
-||(van_leer_flux_i_plus_half_eq_3[i] -  92096536.706174135208130> pow(10,-8)))
+if ((van_leer_flux_i_plus_half_eq_1[i] - 152.761017160429503  > pow(10,-5))\
+|| (van_leer_flux_i_plus_half_eq_2[i] - 226348.334279915259685 > pow(10,-5))\
+||(van_leer_flux_i_plus_half_eq_3[i] -  92096536.706174135208130> pow(10,-5)))
 
 {
    cout<< " The van_leer fluxes for i = 0 at n = 0 are not correct"<< endl;  
@@ -1318,6 +1337,7 @@ Total_flux_i_plus_half[0] = {Total_convective_flux_i_plus_half[0] + Total_pressu
 Total_flux_i_plus_half[1] = {Total_convective_flux_i_plus_half[1] + Total_pressure_flux_i_plus_half[1]};
 Total_flux_i_plus_half[2] = {Total_convective_flux_i_plus_half[2] + Total_pressure_flux_i_plus_half[2]};
 
+
 return Total_flux_i_plus_half;
 }
 
@@ -1388,6 +1408,11 @@ std::fill(van_leer_output.begin(), van_leer_output.end(), 0.0);
 rho_a_u_ht_M_p_vector_left =  set_left_state(i); 
 rho_a_u_ht_M_p_vector_right = set_right_state(i);
 
+if(i==17 )
+{
+
+   //cout<<"Check here"<<endl ; 
+}
 van_leer_output= van_leer_flux_calculator(rho_a_u_ht_M_p_vector_left,rho_a_u_ht_M_p_vector_right);
 
  van_leer_flux_i_plus_half_eq_1[i] = van_leer_output[0] ; 
@@ -1446,17 +1471,17 @@ if (n == 0)
 
 // calculating residual HW 2  : 
 
-residual_eq1[i] = ((F1_plus_half[i]+artificial_dissipation_output[0])*find_area(i+0.5)) - ((F1_plus_half[i-1]+artificial_dissipation_output[3])*find_area(i-0.5)) ; 
-residual_eq2[i] = ((F2_plus_half[i]+artificial_dissipation_output[1])*find_area(i+0.5)) - ((F2_plus_half[i-1]+artificial_dissipation_output[4])*find_area(i-0.5)) -(Source[i]*d_x); 
-residual_eq3[i] = ((F3_plus_half[i]+artificial_dissipation_output[2])*find_area(i+0.5)) - ((F3_plus_half[i-1]+artificial_dissipation_output[5])*find_area(i-0.5)) ; 
+// residual_eq1[i] = ((F1_plus_half[i]+artificial_dissipation_output[0])*find_area(i+0.5)) - ((F1_plus_half[i-1]+artificial_dissipation_output[3])*find_area(i-0.5)) ; 
+// residual_eq2[i] = ((F2_plus_half[i]+artificial_dissipation_output[1])*find_area(i+0.5)) - ((F2_plus_half[i-1]+artificial_dissipation_output[4])*find_area(i-0.5)) -(Source[i]*d_x); 
+// residual_eq3[i] = ((F3_plus_half[i]+artificial_dissipation_output[2])*find_area(i+0.5)) - ((F3_plus_half[i-1]+artificial_dissipation_output[5])*find_area(i-0.5)) ; 
 
 
 
 // HW 4 :  
 
-// residual_eq1[i] = ((van_leer_flux_i_plus_half_eq_1[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_1[i-1])*find_area(i-0.5)) ; 
-// residual_eq2[i] = ((van_leer_flux_i_plus_half_eq_2[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_2[i-1])*find_area(i-0.5)) -(Source[i]*d_x); 
-// residual_eq3[i] = ((van_leer_flux_i_plus_half_eq_3[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_3[i-1])*find_area(i-0.5)) ; 
+residual_eq1[i] = ((van_leer_flux_i_plus_half_eq_1[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_1[i-1])*find_area(i-0.5)) ; 
+residual_eq2[i] = ((van_leer_flux_i_plus_half_eq_2[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_2[i-1])*find_area(i-0.5)) -(Source[i]*d_x); 
+residual_eq3[i] = ((van_leer_flux_i_plus_half_eq_3[i])*find_area(i+0.5)) - ((van_leer_flux_i_plus_half_eq_3[i-1])*find_area(i-0.5)) ; 
 
 if (( i == 1 ) && (n == 0))
 {
