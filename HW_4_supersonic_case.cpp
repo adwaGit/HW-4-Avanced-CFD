@@ -410,7 +410,7 @@ cout<<"check the initial condition the extra ghost cell on the left is a problem
       }  
     }
 
-double set_extra_ghost_cells(int n)
+double set_extra_ghost_cells()
 {
    // 0 minus 1 cell : 
    M_minus_1 = (2 * M_n[0]) - M_n[1] ; 
@@ -1378,7 +1378,7 @@ for (int n=0; n < n_max; n++)
 update_domain_print_variables(n);
    } 
 set_initial_boundary_conditions_insetropic(n); // add to primitive 
-set_extra_ghost_cells(n);
+set_extra_ghost_cells();
 // Now we should have the values for domain + boundaries + extra ghost cells. 
 print_flow_variables(outfile,n);
 
